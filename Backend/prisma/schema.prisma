@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  passwordHash String
+  role         String     @default("client") // "admin" ou "client"
+  birthDate    String?    // Data de nascimento no formato YYYY-MM-DD
+  favorites    Favorite[]
+  progress     Progress[]
+}
+
+model Title {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String
+  coverUrl    String
+  hlsPath     String
+  duration    Int
+  ageRating   String     @default("L") // "L" (Livre), "10", "12", "14", "16", "18"
+  type        String     @default("movie") // "movie" ou "series"
+  genre       String     @default("Drama") // Gênero do filme/série
+  seriesId    Int?       // ID da série principal (null se for série principal ou filme)
+  season      Int?       // Número da temporada (apenas para episódios)
+  episode     Int?       // Número do episódio (apenas para episódios)
+  series      Title?     @relation("SeriesEpisodes", fields: [seriesId], references: [id])
+  episodes    Title[]    @relation("SeriesEpisodes")
+  favorites   Favorite[]
+  progress    Progress[]
+}
+
+model Progress {
+  id       Int   @id @default(autoincrement())
+  userId   Int
+  titleId  Int
+  position Int
+  user     User  @relation(fields: [userId], references: [id])
+  title    Title @relation(fields: [titleId], references: [id])
+  @@unique([userId, titleId])
+}
+
+model Favorite {
+  id      Int   @id @default(autoincrement())
+  userId  Int
+  titleId Int
+  user    User  @relation(fields: [userId], references: [id])
+  title   Title @relation(fields: [titleId], references: [id])
+  @@unique([userId, titleId])
+}
