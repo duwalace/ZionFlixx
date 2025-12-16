@@ -688,30 +688,121 @@ app.get("/api/titles/:id", async (req, res) => {
 
 
 
-// 3. Rota de Teste (Seed) - Para criar um filme fake rápido
+// 3. Rota de Teste (Seed) - Para criar conteúdo de exemplo
 
 app.post("/api/dev/seed", async (req, res) => {
 
-  const item = await prisma.title.create({
+  try {
 
-    data: {
-
-      name: "Filme Exemplo",
-
-      description: "Conteúdo local em HLS gerado com FFmpeg.",
-
-      coverUrl: "/media/capas/exemplo.jpg",
-
-      hlsPath: "/media/movies/exemplo/master.m3u8",
-
-      duration: 5400
-
+    // Opção para limpar antes de criar (query param ?clear=true)
+    if (req.query.clear === 'true') {
+      await prisma.favorite.deleteMany();
+      await prisma.progress.deleteMany();
+      await prisma.title.deleteMany();
     }
 
-  });
+    // Verificar se já existe conteúdo
+    const existingCount = await prisma.title.count();
+    if (existingCount > 0 && req.query.clear !== 'true') {
+      return res.json({ 
+        message: `Já existem ${existingCount} títulos no banco. Use ?clear=true para limpar antes de criar novos.`,
+        count: existingCount
+      });
+    }
 
-  res.json(item);
+    const titles = [
+      {
+        name: "Matrix",
+        description: "Um programador descobre que a realidade é uma simulação e se junta a um grupo de rebeldes para lutar contra as máquinas.",
+        coverUrl: "https://images.unsplash.com/photo-1534809027769-b00d750a6bac?w=400",
+        hlsPath: "/media/movies/matrix/master.m3u8",
+        duration: 8160, // 136 minutos
+        ageRating: "16",
+        type: "movie",
+        genre: "Ficção Científica"
+      },
+      {
+        name: "Breaking Bad",
+        description: "Um professor de química do ensino médio se transforma em um traficante de metanfetamina após descobrir que tem câncer.",
+        coverUrl: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400",
+        hlsPath: "/media/series/breaking-bad/master.m3u8",
+        duration: 2700, // 45 minutos por episódio
+        ageRating: "18",
+        type: "series",
+        genre: "Drama"
+      },
+      {
+        name: "Inception",
+        description: "Um ladrão especializado em extrair segredos do subconsciente recebe uma missão impossível: plantar uma ideia na mente de alguém.",
+        coverUrl: "https://images.unsplash.com/photo-1519682337058-a94d519337bc?w=400",
+        hlsPath: "/media/movies/inception/master.m3u8",
+        duration: 8880, // 148 minutos
+        ageRating: "14",
+        type: "movie",
+        genre: "Ficção Científica"
+      },
+      {
+        name: "Stranger Things",
+        description: "Um grupo de crianças em uma pequena cidade enfrenta forças sobrenaturais e experimentos secretos do governo.",
+        coverUrl: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400",
+        hlsPath: "/media/series/stranger-things/master.m3u8",
+        duration: 3600, // 60 minutos por episódio
+        ageRating: "14",
+        type: "series",
+        genre: "Suspense"
+      },
+      {
+        name: "The Dark Knight",
+        description: "Batman enfrenta o Coringa, um criminoso que ameaça destruir Gotham City.",
+        coverUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400",
+        hlsPath: "/media/movies/dark-knight/master.m3u8",
+        duration: 9120, // 152 minutos
+        ageRating: "14",
+        type: "movie",
+        genre: "Ação"
+      },
+      {
+        name: "Game of Thrones",
+        description: "Nobres famílias lutam pelo controle do Trono de Ferro nos Sete Reinos de Westeros.",
+        coverUrl: "https://images.unsplash.com/photo-1534809027769-b00d750a6bac?w=400",
+        hlsPath: "/media/series/game-of-thrones/master.m3u8",
+        duration: 3600, // 60 minutos por episódio
+        ageRating: "18",
+        type: "series",
+        genre: "Fantasia"
+      }
+    ];
 
+    const created = await prisma.title.createMany({
+      data: titles
+    });
+
+    res.json({ 
+      message: `Criados ${created.count} títulos de exemplo com sucesso!`,
+      count: created.count,
+      titles: await prisma.title.findMany()
+    });
+
+  } catch (error) {
+    console.error("Erro ao criar seed:", error);
+    res.status(500).json({ error: "Erro ao criar conteúdo de exemplo", details: error.message });
+  }
+
+});
+
+// Rota para limpar todos os títulos (apenas desenvolvimento)
+app.delete("/api/dev/seed", async (req, res) => {
+  try {
+    // Deletar favoritos e progressos primeiro
+    await prisma.favorite.deleteMany();
+    await prisma.progress.deleteMany();
+    // Depois deletar títulos
+    const deleted = await prisma.title.deleteMany();
+    res.json({ message: `Removidos ${deleted.count} títulos do banco.` });
+  } catch (error) {
+    console.error("Erro ao limpar seed:", error);
+    res.status(500).json({ error: "Erro ao limpar conteúdo", details: error.message });
+  }
 });
 
 

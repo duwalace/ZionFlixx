@@ -17,7 +17,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, className = '' }) => {
       className={`relative rounded-lg overflow-hidden transform transition-all duration-300 hover:scale-105 hover:z-20 cursor-pointer shadow-lg group bg-zinc-900 aspect-[2/3] ${className}`}
     >
       <img 
-        src={movie.thumbnailUrl} 
+        src={movie.thumbnailUrl || movie.coverUrl} 
         alt={movie.title}
         className="w-full h-full object-cover group-hover:opacity-60 transition-opacity"
       />

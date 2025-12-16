@@ -82,8 +82,8 @@ const Details: React.FC = () => {
         // Verificar se está nos favoritos
         if (isAuthenticated) {
           try {
-            const favoriteCheck = await favoritesAPI.check(Number(id));
-            setIsFavorite(favoriteCheck.isFavorite);
+            const isFav = await favoritesAPI.isFavorite(Number(id));
+            setIsFavorite(isFav);
           } catch (err) {
             console.error('Erro ao verificar favorito:', err);
           }
@@ -179,7 +179,7 @@ const Details: React.FC = () => {
         <div className="flex flex-col md:flex-row gap-8">
           {/* Poster - visible on desktop */}
           <div className="hidden md:block w-64 flex-shrink-0 rounded-lg overflow-hidden shadow-2xl border border-gray-800">
-            <img src={movie.thumbnailUrl} alt={movie.title} className="w-full h-auto" />
+            <img src={movie.thumbnailUrl || movie.coverUrl} alt={movie.title} className="w-full h-auto" />
           </div>
 
           <div className="flex-1">
@@ -227,13 +227,15 @@ const Details: React.FC = () => {
               </div>
               
               <div className="text-sm">
-                <div className="mb-4">
-                  <span className="text-gray-500 block mb-1">Elenco:</span>
-                  <p className="text-gray-200">{movie.cast.join(', ')}</p>
-                </div>
+                {movie.cast && movie.cast.length > 0 && (
+                  <div className="mb-4">
+                    <span className="text-gray-500 block mb-1">Elenco:</span>
+                    <p className="text-gray-200">{movie.cast.join(', ')}</p>
+                  </div>
+                )}
                 <div className="mb-4">
                   <span className="text-gray-500 block mb-1">Gêneros:</span>
-                  <p className="text-gray-200">{movie.genre}</p>
+                  <p className="text-gray-200">{movie.genre || 'Não especificado'}</p>
                 </div>
               </div>
             </div>
@@ -263,7 +265,7 @@ const Details: React.FC = () => {
                         >
                           <div className="relative">
                             <img 
-                              src={ep.thumbnailUrl} 
+                              src={ep.thumbnailUrl || ep.coverUrl} 
                               alt={ep.title} 
                               className="w-full aspect-video object-cover" 
                             />
@@ -300,7 +302,7 @@ const Details: React.FC = () => {
                   onClick={() => navigate(`/details/${m.id}`)}
                   className="bg-zinc-900 rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform duration-200"
                 >
-                   <img src={m.thumbnailUrl} alt={m.title} className="w-full aspect-[2/3] object-cover" />
+                   <img src={m.thumbnailUrl || m.coverUrl} alt={m.title} className="w-full aspect-[2/3] object-cover" />
                    <div className="p-3">
                      <h4 className="text-sm font-semibold truncate">{m.title}</h4>
                    </div>

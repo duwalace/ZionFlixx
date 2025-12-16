@@ -6,6 +6,26 @@ import { titlesAPI, titleToMovie, progressAPI } from '../services/api';
 import { Movie } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
+// Função para detectar e converter URL do YouTube para embed
+const getYouTubeEmbedUrl = (url: string): string | null => {
+  if (!url) return null;
+  
+  // Padrões de URL do YouTube
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      return `https://www.youtube.com/embed/${match[1]}?autoplay=1&rel=0`;
+    }
+  }
+  
+  return null;
+};
+
 const Watch: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -13,6 +33,8 @@ const Watch: React.FC = () => {
   const [movie, setMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isYouTube, setIsYouTube] = useState(false);
+  const [youtubeEmbedUrl, setYoutubeEmbedUrl] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -60,10 +82,24 @@ const Watch: React.FC = () => {
 
   // Configurar HLS e salvar progresso
   useEffect(() => {
-    if (!movie || !videoRef.current) return;
+    if (!movie) return;
+
+    const videoUrl = movie.videoUrl;
+    
+    // Verificar se é URL do YouTube
+    const youtubeUrl = getYouTubeEmbedUrl(videoUrl);
+    if (youtubeUrl) {
+      setIsYouTube(true);
+      setYoutubeEmbedUrl(youtubeUrl);
+      return; // Não precisa configurar player de vídeo para YouTube
+    }
+    
+    setIsYouTube(false);
+    setYoutubeEmbedUrl(null);
+    
+    if (!videoRef.current) return;
 
     const video = videoRef.current;
-    const videoUrl = movie.videoUrl;
 
     // Limpar HLS anterior
     if (hlsRef.current) {
@@ -128,9 +164,9 @@ const Watch: React.FC = () => {
       });
     }
 
-    // Salvar progresso periodicamente
+    // Salvar progresso periodicamente (apenas para vídeos locais, não YouTube)
     const handleTimeUpdate = () => {
-      if (!isAuthenticated || !video) return;
+      if (!isAuthenticated || !video || isYouTube) return;
 
       // Limpar timeout anterior
       if (saveProgressTimeoutRef.current) {
@@ -147,9 +183,9 @@ const Watch: React.FC = () => {
       }, 5000);
     };
 
-    // Salvar progresso ao pausar
+    // Salvar progresso ao pausar (apenas para vídeos locais)
     const handlePause = async () => {
-      if (!isAuthenticated || !video) return;
+      if (!isAuthenticated || !video || isYouTube) return;
       
       try {
         await progressAPI.save(Number(id), Math.floor(video.currentTime));
@@ -172,7 +208,7 @@ const Watch: React.FC = () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('pause', handlePause);
     };
-  }, [movie, id, isAuthenticated]);
+  }, [movie, id, isAuthenticated, isYouTube]);
 
   if (loading) {
     return (
@@ -216,15 +252,25 @@ const Watch: React.FC = () => {
 
       {/* Video Player */}
       <div className="w-full h-full max-w-[100vw] max-h-[100vh]">
-        <video 
-          ref={videoRef}
-          controls 
-          autoPlay 
-          className="w-full h-full object-contain focus:outline-none"
-          poster={movie.coverUrl}
-        >
-          Seu navegador não suporta a tag de vídeo.
-        </video>
+        {isYouTube && youtubeEmbedUrl ? (
+          <iframe
+            src={youtubeEmbedUrl}
+            className="w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            frameBorder="0"
+          />
+        ) : (
+          <video 
+            ref={videoRef}
+            controls 
+            autoPlay 
+            className="w-full h-full object-contain focus:outline-none"
+            poster={movie.coverUrl}
+          >
+            Seu navegador não suporta a tag de vídeo.
+          </video>
+        )}
       </div>
     </div>
   );
